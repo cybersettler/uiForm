@@ -1,0 +1,20 @@
+{
+  "name": "ui-form",
+  "version": "1.0.0",
+  "description": "Websemble web component.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "websemble",
+    "webcomponent",
+    "html5"
+  ],
+  "author": "cybersettler@babylonone.com",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "d3": "^4.4.0",
+    "shortid": "^2.2.6"
+  }
+}
