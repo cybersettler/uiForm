@@ -60,4 +60,4 @@ function FormController(view, model) {
   }
 }
 
-module.exports = ButtonController;
+module.exports = FormController;

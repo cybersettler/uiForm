@@ -63,4 +63,4 @@ function FormGroupController(view, model) {
   }
 }
 
-module.exports = ButtonController;
+module.exports = FormGroupController;
