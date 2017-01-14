@@ -13,13 +13,16 @@ function FormController(view, scope) {
 
   var form = view.shadowRoot.querySelector('form');
 
-  view.addEventListener("submit", function(e) {
-    e.preventDefault();
-    console.log("form submitted", e);
-  });
+  if (view.hasAttribute('data-onsubmit')) {
+    view.addEventListener("submit", function(e) {
+      scope.dispatch('submit');
+    });
+  }
 
-  if (view.hasAttribute('data-schema')) {
-    scope.getAttributeValueFromParentScope("schema").then(init);
+  if (view.hasAttribute('data-schema') && /^\//.test(view.dataset.schema)) {
+    scope.sendGetRequest(view.dataset.schema).then(init);
+  } else if (view.hasAttribute('data-schema')) {
+    scope.getAttributeValueFromParentScope(view.dataset.schema).then(init);
   }
 
   function init(schema) {
