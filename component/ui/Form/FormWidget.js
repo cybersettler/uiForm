@@ -3,7 +3,8 @@ const shortid = require("shortid");
 const tv4 = require("tv4");
 
 function FormWidget(view, schema){
-  this.form = view.shadowRoot.querySelector('form');
+  var form = view.shadowRoot.querySelector('form');
+  this.form = form;
   this.schema = schema;
   var submitButton = view.querySelector('[data-type="submit"], [type="submit"]');
   var widget = this;
