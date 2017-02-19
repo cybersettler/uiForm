@@ -1,13 +1,11 @@
-const d3 = require('d3');
-const shortid = require("shortid");
-const tv4 = require("tv4");
+const FormWidget = require('./FormWidget.js');
 
 /**
- * Controller of the form widget
- * @constructor
- * @param {object} view - HTML element.
- * @param {object} scope - Context of the web component.
- */
+* Controller of the form widget
+* @constructor
+* @param {object} view - HTML element.
+* @param {object} scope - Context of the web component.
+*/
 function FormController(view, scope) {
   this.super(view, scope);
 
@@ -17,25 +15,7 @@ function FormController(view, scope) {
     patch: "sendPatchRequest"
   };
 
-  var form = view.shadowRoot.querySelector('form');
   var bindingAttributes = [];
-
-  var submitButton = view.querySelector('[data-type="submit"], [type="submit"]');
-  if (submitButton) {
-    submitButton.addEventListener('click', function() {
-      var data = new FormData(form);
-      var promise = Promise.resolve();
-      if (view.hasAttribute('data-submit')) {
-        promise = scope.onSubmit(data);
-      }
-      if (view.hasAttribute('data-action')) {
-        promise.then(function() {
-          var method = view.dataset.method || 'post';
-          scope[methodMap[method]](data);
-        })
-      }
-    });
-  }
 
   if (view.hasAttribute('data-model')) {
     bindingAttributes.push('model');
@@ -43,6 +23,10 @@ function FormController(view, scope) {
 
   if (view.hasAttribute('data-schema')) {
     bindingAttributes.push('schema');
+  }
+
+  if (view.hasAttribute('data-display')) {
+    bindingAttributes.push('display');
   }
 
   if (view.hasAttribute('data-submit')) {
@@ -53,14 +37,60 @@ function FormController(view, scope) {
     bindingAttributes.push('action');
   }
 
+  if (view.hasAttribute('data-success')) {
+    bindingAttributes.push('success');
+  }
+
+  if (view.hasAttribute('data-error')) {
+    bindingAttributes.push('error');
+  }
+
   scope.bindAttributes(bindingAttributes);
 
-  this.render = function() {
-    if (!scope.getSchema) {
-      return;
+  this.getFormWidget = function() {
+    var controller = this;
+    if (this.formWidget) {
+      return Promise.resolve(this.formWidget);
     }
 
-    var model, schema, modelPromise;
+    if (scope.getSchema) {
+      return scope.getSchema().then(function(schema) {
+        return new FormWidget(view, schema);
+      }).then(function(formWidget) {
+        if (scope.getDisplay) {
+          scope.getDisplay().then(function(display) {
+            formWidget.display = display;
+          });
+        }
+        controller.formWidget = formWidget;
+        return formWidget;
+      });
+    }
+
+    return Promise.reject(new Error('No schema specified'));
+  };
+
+  // Before the data is submitted,
+  // the parent view has the oportunity to manipulate the data.
+  this.getFormWidget().then(function(formWidget) {
+    return formWidget.onSubmit;
+  }).then(function(result) {
+    if (view.hasAttribute('data-submit')) {
+      return scope.onSubmit(result);
+    }
+    return result;
+  }).then(function(result) {
+    // At this point we receive the data back from
+    // the submit handler.
+    if (view.hasAttribute('data-action')) {
+      var method = view.dataset.method || 'post';
+      scope[methodMap[method]](result);
+    }
+  });
+
+  this.render = function() {
+    var modelPromise;
+    var controller = this;
 
     if (scope.getModel) {
       modelPromise = scope.getModel();
@@ -68,59 +98,16 @@ function FormController(view, scope) {
       modelPromise = Promise.resolve({});
     }
 
-    modelPromise
-    .then(function(result) {
+    var model;
+
+    modelPromise.then(function(result) {
       model = result;
-      return scope.getSchema();
-    })
-    .then(function(result) {
-      schema = result;
-      init(model, schema);
+      return controller.getFormWidget();
+    }).then(function(formWidget) {
+      formWidget.render(model);
     });
-  }
+  };
 
-  function init(model, schema) {
-    var idMap = {};
-
-    // Update…
-    var group = d3.select(form)
-    .selectAll("div.form-group")
-    .data(Object.keys(schema.properties))
-    .text(function(d) { return d; });
-
-    // Enter…
-    var appended = group.enter().insert('div','content');
-
-    appended.classed("form-group", true);
-
-    appended.append("label")
-    .attr("for", function(d) {
-      var id = shortid.generate();
-      idMap[d] = id;
-      return id;
-    }).text(function(d) {
-      return schema.properties[d].title;
-    });
-
-    appended.append("input")
-    .classed("form-control", true)
-    .attr("name", function(d) {
-      return d;
-    }).attr("value", function(d) {
-      return model[d];
-    }).attr("id", function(d) {
-      return idMap[d];
-    });
-
-    appended.append("p")
-    .classed('help-block', true)
-    .text(function(d) {
-      return schema.properties[d].description;
-    });
-
-    // Exit…
-    group.exit().remove();
-  }
 }
 
 module.exports = FormController;
