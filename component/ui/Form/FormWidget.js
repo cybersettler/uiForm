@@ -17,7 +17,7 @@ function FormWidget(view, schema){
           return;
         }
         widget.validationResult = tv4.validateMultiple(data, schema);
-        if (validationResult.valid) {
+        if (widget.validationResult.valid) {
           fulfill(data);
         } else {
           widget.render(data);
