@@ -2,10 +2,11 @@ const d3 = require('d3');
 const shortid = require("shortid");
 const tv4 = require("tv4");
 
-function FormWidget(view, schema){
+function FormWidget(view, schema, fields){
   var form = view.shadowRoot.querySelector('form');
   this.form = form;
   this.schema = schema;
+  this.fields = fields || Object.keys(schema.properties);
   var submitButton = view.querySelector('[data-type="submit"], [type="submit"]');
   var widget = this;
   this.onSubmit = new Promise(function(fulfill, reject) {
@@ -32,11 +33,12 @@ FormWidget.prototype.render = function(model) {
   var form = this.form;
   var schema = this.schema;
   var validationResult = this.validationResult;
+  var fields = this.fields;
 
   // Update…
   var group = d3.select(form)
   .selectAll("div.form-group")
-  .data(Object.keys(schema.properties))
+  .data(fields)
   .classed('has-error', function(d) {
     if (validationResult) {
       var found = validationResult.errors.find(
@@ -54,7 +56,7 @@ FormWidget.prototype.render = function(model) {
 
   // Enter…
   var appended = group.enter().insert('div','content')
-    .classed('formgroup', true);
+    .classed('form-group', true);
 
   var nonBooleanFields = appended.filter(function(d) {
     return schema.properties[d].type !== 'boolean';

@@ -49,12 +49,13 @@ function FormController(view, scope) {
 
   this.getFormWidget = function() {
     var controller = this;
-    if (this.formWidget) {
-      return Promise.resolve(this.formWidget);
+    if (this.formWidgetPromise) {
+      return this.formWidgetPromise;
     }
 
     if (scope.getSchema) {
-      return scope.getSchema().then(function(schema) {
+      this.formWidgetPromise = scope.getSchema()
+      .then(function(schema) {
         return new FormWidget(view, schema);
       }).then(function(formWidget) {
         if (scope.getDisplay) {
@@ -62,12 +63,12 @@ function FormController(view, scope) {
             formWidget.display = display;
           });
         }
-        controller.formWidget = formWidget;
         return formWidget;
       });
+      return this.formWidgetPromise;
+    } else {
+      return Promise.reject(new Error('No schema specified'));
     }
-
-    return Promise.reject(new Error('No schema specified'));
   };
 
   // Before the data is submitted,
