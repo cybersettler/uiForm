@@ -126,6 +126,7 @@ function generateDropdownWidget(optionList, model) {
     option.textContent = item;
     select.appendChild(option);
   });
+  return select;
 };
 
 module.exports = FormWidget;
