@@ -68,7 +68,7 @@ FormWidget.prototype.getDisplayFields = function() {
 
 FormWidget.prototype.getFieldInputType = function(fieldName) {
   var display = this.display;
-  var fieldSchema = schema.properties[fieldName];
+  var fieldSchema = this.schema.properties[fieldName];
 
   if (display && display.fields &&
       display.fields[fieldName] &&
