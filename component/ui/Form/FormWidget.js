@@ -49,8 +49,10 @@ FormWidget.prototype.getDisplayFields = function() {
 
     var field = {
       name: item,
+      inputType: inputType,
       title: title,
-      inputType: inputType
+      description: description,
+      placeholder: placeholder
     };
 
     if (inputType === 'select') {
@@ -163,7 +165,9 @@ FormWidget.prototype.appendNonBooleanFields = function(selection, model) {
     if (d.inputType === 'select') {
       return generateDropdownWidget(d);
     }
-    return document.createElement('input');
+    var input = document.createElement('input');
+    input.placeholder = d.placeholder;
+    return input;
   })
   .classed("form-control", true)
   .attr("name", function(d) {
