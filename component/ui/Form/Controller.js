@@ -49,21 +49,22 @@ function FormController(view, scope) {
 
   this.getFormWidget = function() {
     var controller = this;
+    var schema, display;
     if (this.formWidgetPromise) {
       return this.formWidgetPromise;
     }
 
     if (scope.getSchema) {
       this.formWidgetPromise = scope.getSchema()
-      .then(function(schema) {
-        return new FormWidget(view, schema);
-      }).then(function(formWidget) {
+      .then(function(result) {
+        schema = result;
         if (scope.getDisplay) {
-          scope.getDisplay().then(function(display) {
-            formWidget.display = display;
-          });
+          return scope.getDisplay();
         }
-        return formWidget;
+        return Promise.resolve();
+      })
+      .then(function(display) {
+        return new FormWidget(view, schema, display);
       });
       return this.formWidgetPromise;
     } else {
