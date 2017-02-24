@@ -40,6 +40,10 @@ Handler of the submit event. The handler will be called before
 the action event handler is, which will receive the result of the
 submit handler.
 
+### data-method
+
+HTTP method to use in the submit request, usually "POST" or "PUT".
+
 ### data-action
 
 Handler of the action event. It receives the result of the submit event
