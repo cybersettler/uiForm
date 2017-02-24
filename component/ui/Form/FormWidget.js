@@ -159,7 +159,7 @@ FormWidget.prototype.render = function(model) {
     if (validationResult) {
       var found = validationResult.errors.find(
         function(error) {
-          var errorKey = getFiledNameFromError(error);
+          var errorKey = getFieldNameFromError(error);
           return d.name === errorKey;
         }
       );
@@ -179,6 +179,10 @@ FormWidget.prototype.render = function(model) {
   }).call(appendDropdownControl, model);
 
   appended.filter(function(d) {
+    return d.inputType === 'radio';
+  }).call(appendRadioGroupControl, model);
+
+  appended.filter(function(d) {
     return d.inputType === 'checkbox-multiple';
   }).call(appendCheckboxMultipleControl, model);
 
@@ -188,7 +192,8 @@ FormWidget.prototype.render = function(model) {
 
   appended.filter(function(d) {
     return d.inputType !== 'checkbox' &&
-      d.inputType !== 'select' && d.inputType !== 'checkbox-multiple';
+      d.inputType !== 'select' && d.inputType !== 'checkbox-multiple'
+      && d.inputType !== 'radio';
   }).call(appendNonBooleanFields, model);
 
   // Exit…
@@ -267,6 +272,12 @@ function appendDropdownControl(selection, model) {
   .attr('id', id)
   .attr('name', function(d) {
     return d.name;
+  })
+  .attr('value', function(d) {
+    if (model[d.name]) {
+      return model[d.name];
+    }
+    return null;
   });
   selection.datum().options.forEach(function(item) {
     select.append('option').text(item);
@@ -320,13 +331,24 @@ function appendRadioGroupControl(selection, model) {
     return;
   }
 
-  var select = document.createElement('select');
-  field.options.forEach(function(item) {
-    var option = document.createElement('option');
-    option.textContent = item;
-    select.appendChild(option);
+  selection.append("label")
+  .text(function(d) {
+    return d.title;
   });
-  return select;
+
+  selection.datum().options.forEach(function(option) {
+    var radio = appendRadioControl(selection, option);
+    radio.attr('name', function(d) {
+        return d.name;
+    })
+    .attr('value', option)
+    .attr('checked', function(d) {
+      if (model && model[d.name] && model[d.name] === option) {
+        return 'undefined';
+      }
+      return null;
+    });
+  });
 }
 
 function appendRadioControl(selection, description) {
@@ -343,7 +365,7 @@ function isEmptyValue(value) {
   return value === '' || typeof value === "undefined" || value === null;
 }
 
-function getFiledNameFromError(error) {
+function getFieldNameFromError(error) {
   if (ErrorFieldNamePattern.test(error.dataPath)) {
     return ErrorFieldNamePattern.exec(error.dataPath)[1];
   }
