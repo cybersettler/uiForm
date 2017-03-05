@@ -6,31 +6,30 @@ const ErrorFieldNamePattern = /^\/(\w+)/;
 
 function FormWidget(view, schema, display){
   var form = view.shadowRoot.querySelector('form');
+  var displayState = getFormDisplayState(view);
   this.form = form;
   this.schema = schema;
-  this.display = display;
-  var widget = this;
+  this.onSubmit = getSubmitPromise(this);
   var submitButton = view.querySelector('[data-type="submit"], [type="submit"]');
-  this.onSubmit = new Promise(function(fulfill, reject) {
-    if (submitButton) {
-      submitButton.addEventListener('click', function() {
-        var data = widget.parseFormData();
-
-        if (!schema) {
-          fulfill(data);
-          return;
-        }
-
-        widget.validationResult = tv4.validateMultiple(data, schema);
-        if (widget.validationResult.valid) {
-          fulfill(data);
-        } else {
-          widget.render(data);
-          reject(new Error('Form data is not valid'));
-        }
-      });
-    }
+  var fields = getDisplayFields(view, schema, display, displayState);
+  var submitField = fields.find(function(item) {
+    return item.inputType === 'submit';
   });
+  if (submitButton && !submitField) {
+    fields.push({
+      inputType: 'submit'
+    });
+  }
+  if (displayState === 'filled') {
+    var children = view.children;
+    var i;
+    for(i = 0; i < children.length; i++) {
+      var node = children[0];
+      form.appendChild(node);
+    }
+  }
+  this.fields = fields;
+  this.submitButton = submitButton;
 }
 
 FormWidget.prototype.parseFormData = function() {
@@ -71,85 +70,10 @@ FormWidget.prototype.isRequiredField = function(fieldName) {
   return false;
 }
 
-FormWidget.prototype.getDisplayFields = function() {
-  var display = this.display;
-  var schema = this.schema;
-  var fields = display && display.sorting ? display.sorting :
-  Object.keys(schema.properties);
-
-  return fields.map(function(item) {
-    var displayConfig = display && display.fields &&
-    display.fields[item] ? display.fields[item] : false;
-    var fieldSchema = schema.properties[item];
-    var title = displayConfig && displayConfig.title ?
-    displayConfig.title : fieldSchema.title;
-    var placeholder = displayConfig && displayConfig.placeholder ?
-    displayConfig.placeholder : '';
-    var inputType = this.getFieldInputType(item);
-    var description = displayConfig && displayConfig.description ?
-    displayConfig.description : fieldSchema.description;
-
-    var field = {
-      name: item,
-      inputType: inputType,
-      title: title,
-      description: description,
-      placeholder: placeholder
-    };
-
-    if (inputType === 'select' || inputType === 'radio') {
-      field.options = fieldSchema.enum;
-    }
-
-    if (inputType === 'checkbox-multiple') {
-      field.options = fieldSchema.items.enum;
-    }
-
-    return field;
-
-  }, this);
-};
-
-FormWidget.prototype.getFieldInputType = function(fieldName) {
-  var display = this.display;
-  var fieldSchema = this.schema.properties[fieldName];
-
-  if (display && display.fields &&
-    display.fields[fieldName] &&
-    display.fields[fieldName].inputType) {
-      return display.fields[fieldName].inputType;
-  }
-
-  if (fieldSchema.type === 'string' &&
-  fieldSchema.enum) {
-    return 'select';
-  }
-
-  if (fieldSchema.type === 'integer' ||
-  fieldSchema.type === 'number') {
-    return 'number';
-  }
-
-  if (fieldSchema.type === 'boolean') {
-    return 'checkbox';
-  }
-
-  if (fieldSchema.type === 'array' &&
-  fieldSchema.items &&
-  fieldSchema.items.type === 'string' &&
-  fieldSchema.items.enum) {
-    return 'checkbox-multiple';
-  }
-
-  return 'text';
-};
-
 FormWidget.prototype.render = function(model) {
   var form = this.form;
-  var schema = this.schema;
-  var display = this.display;
   var validationResult = this.validationResult;
-  var fields = this.getDisplayFields();
+  var fields = this.fields;
 
   // Update…
   var group = d3.select(form)
@@ -191,13 +115,91 @@ FormWidget.prototype.render = function(model) {
   }).call(appendBooleanFields, model);
 
   appended.filter(function(d) {
+    return d.inputType === 'textarea';
+  }).call(appendTextareaControl, model);
+
+  appended.filter(function(d) {
+    return d.inputType === 'submit';
+  }).call(appendSubmitControl, this);
+
+  appended.filter(function(d) {
     return d.inputType !== 'checkbox' &&
       d.inputType !== 'select' && d.inputType !== 'checkbox-multiple'
-      && d.inputType !== 'radio';
+      && d.inputType !== 'radio' && d.inputType !== 'textarea'
+      && d.inputType !== 'submit';
   }).call(appendNonBooleanFields, model);
 
   // Exit…
   group.exit().remove();
+};
+
+function getDisplayFields(view, schema, display, displayState) {
+  schema = schema || {properties:{}};
+  display = display || {fields:{}};
+
+  var fieldList = display && display.sorting ? display.sorting :
+  Object.keys(schema.properties);
+
+  if (displayState === 'filled') {
+    fieldList = [];
+    view.querySelectorAll('[name]').forEach(function(el) {
+      var name = el.getAttribute('name');
+      var tagName = el.tagName.toLowerCase();
+
+      if (ArrayPattern.test(name)) {
+        name = ArrayPattern.exec(name)[1];
+      }
+
+      var inputType = el.getAttribute('type');
+
+      if (tagName === 'select' || tagName === 'textarea') {
+        inputType = tagName;
+      }
+
+      if (fieldList.includes(name)) {
+        return;
+      }
+
+      if (!display.fields[name]) {
+        display.fields[name] = {
+          inputType: inputType
+        };
+      }
+
+      fieldList.push(name);
+    });
+  }
+
+  return fieldList.map(function(item) {
+    var displayConfig = display && display.fields &&
+    display.fields[item] ? display.fields[item] : false;
+    var fieldSchema = schema.properties[item] || {};
+    var title = displayConfig && displayConfig.title ?
+    displayConfig.title : fieldSchema.title;
+    var placeholder = displayConfig && displayConfig.placeholder ?
+    displayConfig.placeholder : '';
+    var inputType = getFieldInputType(item, display, schema);
+    var description = displayConfig && displayConfig.description ?
+    displayConfig.description : fieldSchema.description;
+
+    var field = {
+      name: item,
+      inputType: inputType,
+      title: title,
+      description: description,
+      placeholder: placeholder
+    };
+
+    if (inputType === 'select' || inputType === 'radio') {
+      field.options = fieldSchema.enum;
+    }
+
+    if (inputType === 'checkbox-multiple' && fieldSchema.items) {
+      field.options = fieldSchema.items.enum;
+    }
+
+    return field;
+  });
 };
 
 function appendNonBooleanFields(selection, model) {
@@ -216,11 +218,7 @@ function appendNonBooleanFields(selection, model) {
     return d.title;
   });
 
-  selection.append(function(d) {
-    var input = document.createElement('input');
-    input.placeholder = d.placeholder;
-    return input;
-  })
+  selection.append('input')
   .classed("form-control", true)
   .attr("name", function(d) {
     return d.name;
@@ -228,6 +226,11 @@ function appendNonBooleanFields(selection, model) {
     return model[d.name];
   }).attr("id", function(d) {
     return idMap[d.name];
+  }).attr('placeholder', function(d) {
+    if (d.placeholder) {
+      return d.placeholder;
+    }
+    return null;
   });
 
   selection.append("p").classed('help-block', true)
@@ -361,6 +364,59 @@ function appendRadioControl(selection, description) {
   return input;
 }
 
+function appendTextareaControl(selection, model) {
+  if (selection.empty()) {
+    return;
+  }
+
+  var id = shortid.generate();
+
+  selection.append("label")
+  .attr("for", function() {
+    return id;
+  }).text(function(d) {
+    return d.title;
+  });
+
+  selection.append('textarea')
+  .classed("form-control", true)
+  .attr("name", function(d) {
+    return d.name;
+  }).attr("id", function(d) {
+    return id;
+  }).attr("rows", function(d) {
+    return d.rows ? d.rows : '3';
+  }).attr('placeholder', function(d) {
+    return d.placeholder ? d.placeholder : null;
+  }).text(function(d) {
+    return model[d.name] ? model[d.name] : '';
+  });
+
+  selection.append("p").classed('help-block', true)
+  .text(function(d) {
+    return d.description;
+  });
+}
+
+function appendSubmitControl(selection, widget) {
+  if (selection.empty()) {
+    return;
+  }
+
+  var submitButton = widget.submitButton;
+
+  var submitSelection = selection.append(function(d) {
+    if (submitButton) {
+      return submitButton;
+    }
+    var button = document.createElement('button');
+    button.className = 'btn btn-default';
+    button.setAttribute('type', 'submit');
+    button.textContent = d.title;
+    return button;
+  });
+}
+
 function isEmptyValue(value) {
   return value === '' || typeof value === "undefined" || value === null;
 }
@@ -371,5 +427,74 @@ function getFieldNameFromError(error) {
   }
   return error.params.key;
 }
+
+function getSubmitPromise(formWidget) {
+  return new Promise(function(fulfill, reject) {
+      formWidget.form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        var data = formWidget.parseFormData();
+
+        if (!formWidget.schema) {
+          fulfill(data);
+          return;
+        }
+
+        formWidget.validationResult = tv4.validateMultiple(data, formWidget.schema);
+        if (formWidget.validationResult.valid) {
+          fulfill(data);
+        } else {
+          formWidget.render(data);
+          reject(new Error('Form data is not valid'));
+        }
+      });
+  });
+}
+
+function getFormDisplayState(view) {
+  var groups = view.querySelectorAll('.form-group');
+  if (groups.length > 1) {
+    return 'filled';
+  }
+
+  if (groups.length === 1 &&
+    groups.item(0).querySelectorAll('[data-type="submit"], [type="submit"]').length === 0) {
+      return 'filled';
+  }
+
+  return 'empty';
+}
+
+function getFieldInputType(fieldName, display, schema) {
+  var fieldSchema = schema.properties[fieldName];
+
+  if (display && display.fields &&
+    display.fields[fieldName] &&
+    display.fields[fieldName].inputType) {
+      return display.fields[fieldName].inputType;
+  }
+
+  if (fieldSchema && fieldSchema.type === 'string' &&
+  fieldSchema.enum) {
+    return 'select';
+  }
+
+  if (fieldSchema && (fieldSchema.type === 'integer' ||
+  fieldSchema.type === 'number')) {
+    return 'number';
+  }
+
+  if (fieldSchema && fieldSchema.type === 'boolean') {
+    return 'checkbox';
+  }
+
+  if (fieldSchema && fieldSchema.type === 'array' &&
+  fieldSchema.items &&
+  fieldSchema.items.type === 'string' &&
+  fieldSchema.items.enum) {
+    return 'checkbox-multiple';
+  }
+
+  return 'text';
+};
 
 module.exports = FormWidget;
