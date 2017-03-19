@@ -7,6 +7,8 @@ const ErrorFieldNamePattern = /^\/(\w+)/;
 function FormWidget(view, schema, display){
   var form = view.shadowRoot.querySelector('form');
   var displayState = getFormDisplayState(view);
+  this.view = view;
+  this.display = display;
   this.form = form;
   this.schema = schema;
   this.onSubmit = getSubmitPromise(this);
@@ -74,6 +76,17 @@ FormWidget.prototype.render = function(model) {
   var form = this.form;
   var validationResult = this.validationResult;
   var fields = this.fields;
+  var style = 'default';
+
+  if (this.view.classList.contains('form-inline') || (this.display && this.display.style === 'inline')) {
+    style = 'inline';
+    form.classList.add('form-inline');
+  }
+
+  if (this.view.classList.contains('form-horizontal') || (this.display && this.display.style === 'horizontal')) {
+    style = 'horizontal';
+    form.classList.add('form-horizontal');
+  }
 
   // Update…
   var group = d3.select(form)
@@ -100,34 +113,34 @@ FormWidget.prototype.render = function(model) {
 
   appended.filter(function(d) {
     return d.inputType === 'select';
-  }).call(appendDropdownControl, model);
+  }).call(appendDropdownControl, model, style);
 
   appended.filter(function(d) {
     return d.inputType === 'radio';
-  }).call(appendRadioGroupControl, model);
+  }).call(appendRadioGroupControl, model, style);
 
   appended.filter(function(d) {
     return d.inputType === 'checkbox-multiple';
-  }).call(appendCheckboxMultipleControl, model);
+  }).call(appendCheckboxMultipleControl, model, style);
 
   appended.filter(function(d) {
     return d.inputType === 'checkbox';
-  }).call(appendBooleanFields, model);
+  }).call(appendBooleanFields, model, style);
 
   appended.filter(function(d) {
     return d.inputType === 'textarea';
-  }).call(appendTextareaControl, model);
+  }).call(appendTextareaControl, model, style);
 
   appended.filter(function(d) {
     return d.inputType === 'submit';
-  }).call(appendSubmitControl, this);
+  }).call(appendSubmitControl, this, style);
 
   appended.filter(function(d) {
     return d.inputType !== 'checkbox' &&
       d.inputType !== 'select' && d.inputType !== 'checkbox-multiple'
       && d.inputType !== 'radio' && d.inputType !== 'textarea'
       && d.inputType !== 'submit';
-  }).call(appendNonBooleanFields, model);
+  }).call(appendNonBooleanFields, model, style);
 
   // Exit…
   group.exit().remove();
@@ -202,21 +215,14 @@ function getDisplayFields(view, schema, display, displayState) {
   });
 };
 
-function appendNonBooleanFields(selection, model) {
+function appendNonBooleanFields(selection, model, style) {
   if (selection.empty()) {
     return;
   }
 
-  var idMap = {};
-
-  selection.append("label")
-  .attr("for", function(d) {
-    var id = shortid.generate();
-    idMap[d.name] = id;
-    return id;
-  }).text(function(d) {
-    return d.title;
-  });
+  var id = shortid.generate();
+  selection.call(appendLabel, style, id);
+  selection = addExtraColumnIfHorizontal(selection, style);
 
   selection.append('input')
   .classed("form-control", true)
@@ -225,7 +231,7 @@ function appendNonBooleanFields(selection, model) {
   }).attr("value", function(d) {
     return model[d.name];
   }).attr("id", function(d) {
-    return idMap[d.name];
+    return id;
   }).attr('placeholder', function(d) {
     if (d.placeholder) {
       return d.placeholder;
@@ -239,7 +245,28 @@ function appendNonBooleanFields(selection, model) {
   });
 }
 
-function appendBooleanFields(appended, model) {
+function appendLabel(selection, style, id) {
+  id = id || null;
+  selection.append("label")
+  .classed('col-sm-2 control-label', function() {
+    return style === 'horizontal';
+  })
+  .attr("for", function() {
+    return id;
+  }).text(function(d) {
+    return d.title;
+  });
+}
+
+function addExtraColumnIfHorizontal(selection, style) {
+  if (style === 'horizontal') {
+    return selection.append('div')
+    .classed('col-sm-10', true);
+  }
+  return selection;
+}
+
+function appendBooleanFields(appended, model, style) {
   if (appended.empty()) {
     return;
   }
@@ -247,6 +274,11 @@ function appendBooleanFields(appended, model) {
   var selection = appended.filter(function(d) {
     return d.inputType === 'checkbox';
   });
+
+  if (style === 'horizontal') {
+    selection = selection.append('div')
+    .classed('col-sm-offset-2 col-sm-10', true);
+  }
 
   var checkbox = appendCheckboxControl(selection);
   checkbox.attr('name', function(d) {
@@ -257,19 +289,14 @@ function appendBooleanFields(appended, model) {
   });
 };
 
-function appendDropdownControl(selection, model) {
+function appendDropdownControl(selection, model, style) {
   if (selection.empty()) {
     return;
   }
 
   var id = shortid.generate();
-
-  selection.append("label")
-  .attr("for", function(d) {
-    return id;
-  }).text(function(d) {
-    return d.title;
-  });
+  selection.call(appendLabel, style, id);
+  selection = addExtraColumnIfHorizontal(selection, style);
 
   var select = selection.append('select')
   .attr('id', id)
@@ -301,15 +328,13 @@ function appendCheckboxControl(selection, description) {
   return input;
 }
 
-function appendCheckboxMultipleControl(selection, model) {
+function appendCheckboxMultipleControl(selection, model, style) {
   if (selection.empty()) {
     return;
   }
 
-  selection.append("label")
-  .text(function(d) {
-    return d.title;
-  });
+  selection.call(appendLabel, style);
+  selection = addExtraColumnIfHorizontal(selection, style);
 
   selection.datum().options.forEach(function(option) {
     var checkbox = appendCheckboxControl(selection, option);
@@ -329,15 +354,13 @@ function appendCheckboxMultipleControl(selection, model) {
   });
 }
 
-function appendRadioGroupControl(selection, model) {
+function appendRadioGroupControl(selection, model, style) {
   if (selection.empty()) {
     return;
   }
 
-  selection.append("label")
-  .text(function(d) {
-    return d.title;
-  });
+  selection.call(appendLabel, style);
+  selection = addExtraColumnIfHorizontal(selection, style);
 
   selection.datum().options.forEach(function(option) {
     var radio = appendRadioControl(selection, option);
@@ -364,19 +387,15 @@ function appendRadioControl(selection, description) {
   return input;
 }
 
-function appendTextareaControl(selection, model) {
+function appendTextareaControl(selection, model, style) {
   if (selection.empty()) {
     return;
   }
 
   var id = shortid.generate();
 
-  selection.append("label")
-  .attr("for", function() {
-    return id;
-  }).text(function(d) {
-    return d.title;
-  });
+  selection.call(appendLabel, style, id);
+  selection = addExtraColumnIfHorizontal(selection, style);
 
   selection.append('textarea')
   .classed("form-control", true)
@@ -398,12 +417,17 @@ function appendTextareaControl(selection, model) {
   });
 }
 
-function appendSubmitControl(selection, widget) {
+function appendSubmitControl(selection, widget, style) {
   if (selection.empty()) {
     return;
   }
 
   var submitButton = widget.submitButton;
+
+  if (style === 'horizontal') {
+    selection = selection.append('div')
+    .classed('col-sm-offset-2 col-sm-10', true);
+  }
 
   var submitSelection = selection.append(function(d) {
     if (submitButton) {
