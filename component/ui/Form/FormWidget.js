@@ -3,6 +3,8 @@ const shortid = require("shortid");
 const tv4 = require("tv4");
 const ArrayPattern = /(\w+)\[\]$/;
 const ErrorFieldNamePattern = /^\/(\w+)/;
+const Handlebars = require('Handlebars');
+const i18next = require('i18next');
 
 function FormWidget(view, schema, display){
   var form = view.shadowRoot.querySelector('form');
@@ -12,24 +14,18 @@ function FormWidget(view, schema, display){
   this.form = form;
   this.schema = schema;
   this.onSubmit = getSubmitPromise(this);
-  var submitButton = view.querySelector('[data-type="submit"], [type="submit"]');
-  var fields = getDisplayFields(view, schema, display, displayState);
-  var submitField = fields.find(function(item) {
-    return item.inputType === 'submit';
-  });
-  if (submitButton && !submitField) {
-    fields.push({
-      inputType: 'submit'
-    });
-  }
+  var submitButton;
+
+  var template = Handlebars.compile(view.innerHTML);
   if (displayState === 'filled') {
-    var children = view.children;
-    var i;
-    for(i = 0; i < children.length; i++) {
-      var node = children[0];
-      form.appendChild(node);
-    }
+    form.innerHTML = template();
+    submitButton = form.querySelector('[data-type="submit"], [type="submit"]');
+  } else {
+    view.innerHTML = template();
+    submitButton = view.querySelector('[data-type="submit"], [type="submit"]');
   }
+
+  var fields = getDisplayFields(view, schema, display, displayState);
   this.fields = fields;
   this.submitButton = submitButton;
 }
@@ -152,10 +148,12 @@ function getDisplayFields(view, schema, display, displayState) {
 
   var fieldList = display && display.sorting ? display.sorting :
   Object.keys(schema.properties);
+  var submitButton = view.querySelector('[data-type="submit"], [type="submit"]');
 
   if (displayState === 'filled') {
+    var form = view.shadowRoot.querySelector('form');
     fieldList = [];
-    view.querySelectorAll('[name]').forEach(function(el) {
+    form.querySelectorAll('[name]').forEach(function(el) {
       var name = el.getAttribute('name');
       var tagName = el.tagName.toLowerCase();
 
@@ -181,6 +179,21 @@ function getDisplayFields(view, schema, display, displayState) {
 
       fieldList.push(name);
     });
+
+    submitButton = form.querySelector('[data-type="submit"], [type="submit"]');
+  }
+
+  var submitField = fieldList.find(function(name) {
+    var field = display.fields[name];
+    return field && field.inputType === 'submit';
+  });
+
+  if (submitButton && !submitField) {
+    var name = submitButton.getAttribute('name') || 'submit';
+    display.fields[name] = {
+      inputType: 'submit'
+    };
+    fieldList.push(name);
   }
 
   return fieldList.map(function(item) {
@@ -254,7 +267,7 @@ function appendLabel(selection, style, id) {
   .attr("for", function() {
     return id;
   }).text(function(d) {
-    return d.title;
+    return i18next.t(d.title);
   });
 }
 
@@ -436,7 +449,7 @@ function appendSubmitControl(selection, widget, style) {
     var button = document.createElement('button');
     button.className = 'btn btn-default';
     button.setAttribute('type', 'submit');
-    button.textContent = d.title;
+    button.textContent = i18next.t(d.title);
     return button;
   });
 }

@@ -48,7 +48,7 @@ is be empty, no button will be generated.
 ###  Specifying a display configuration
 
 Another way to determine which controls to display is
-to specify a display configuration. It has the advantage
+by a display configuration. It has the advantage
 of enabling granular control of how form fields will be
 displayed. Here is an example:
 
@@ -70,8 +70,7 @@ this.getDisplay = function() {
           title: 'Submit'
         }
       },
-      sorting: ["firstName", "lastName", "birthday", "submit"
-      ]
+      sorting: ["firstName", "lastName", "birthday", "submit"]
     };
   };
 // ...
