@@ -22,7 +22,10 @@ In your project's bower.json:
 }
 ```
 
-There are two ways to display form fields with UI Form, either the fields are generated automatically based on a JSON schema or display configuration file, or they are specified as html content of the UI Form tag.
+There are two ways to display form fields with UI Form,
+either the fields are generated automatically based on
+a JSON schema or display configuration file, or they
+are specified as html content of the UI Form tag.
 
 ##  Specifying a schema
 
@@ -58,19 +61,26 @@ displayed. Here is an example:
 this.getDisplay = function() {
     return {
       style: 'default',
-      fields: {
-        firstName: {
-          title: "First name"
-        },
-        lastName: {
-          title: "Last name"
-        },
-        submit: {
-          inputType: 'submit',
-          title: 'Submit'
-        }
-      },
-      sorting: ["firstName", "lastName", "birthday", "submit"]
+      fields: [
+          "firstname",
+          "lastname", 
+          "birthdate", {
+            name: "description",
+            inputType: "textarea"
+          }, {
+            name: 'gender',
+            inputType: "select",
+            options: [
+                'male', 'female'
+                ]
+          }, {
+            name: "agreement",
+            inputType: "checkbox"
+          }, {
+            name: "submit",
+            inputType: "submit"
+          }
+      ]
     };
   };
 // ...
@@ -79,15 +89,17 @@ this.getDisplay = function() {
 One thing that may be determined with a display configuration is
 the order of the fields, which is undetermined if only the schema
 is specified, since the fields in the schema are attributes of the
-properties object, and in javascript object attributes are not
+_properties_ object, and in javascript object attributes are not
 guaranteed to have any specific order.
 
-Also notice that the birthday field in the sorting in the example
-above is not present in the fields object. It is assumed that the
-birthday field would be specified in the schema. This means that
-UI Form builds a display configuration from the given display and
-from a schema if given, so the display configuration does not need
-to be always exhaustive.
+Also notice that the firstname, lastname and birthdate fields in
+the example above are just strings without any configuration.
+The UI Form component will assume that firstname, lastname and
+birthdate fields are specified in the schema, and if it does not
+find any specification there, it will default to text input field
+configuration. This means that UI Form builds a display configuration
+from the given display and from a schema if given, so the display
+configuration does not need to be always exhaustive.
 
 ### View content
 
@@ -133,26 +145,19 @@ this.getSchema = function() {
 ### data-display
 
 Definition of how the form fields should be displayed.
+The following display options are available:
 
-```javascript
-{
-    style: "horizontal",
-    fields: {
-        title: {
-            inputType: "radio"
-        },
-        firstName: {
-            placeholder: "First name",
-            title: ""
-       },
-        lastName: {
-            placeholder: "Last name",
-            title: ""
-       },
-    },
-    sorting: ["title", "firstName", "lastName", "birthday"]
-}
-```
+* __style__(string): Form style, possible values are "horizontal",
+"inline" and "default". Default value is "default".
+* __Fields__(Array): Array of field names and/or field configuration
+objects. The following options are available for configuration objects:
+  * __name__(string): Name of the field
+  * __inputType__(string): Input control type. Possible values are
+  HTML input element types plus "select" and "textarea". Default
+  value is "text".
+  * __placeholder__(string): Placeholder for the input field.
+  * __options__(Array): Array of options for the select input type.
+  The option may be a string or an object.
 
 ### data-submit
 
