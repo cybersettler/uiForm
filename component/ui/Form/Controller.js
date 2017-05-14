@@ -8,6 +8,8 @@ const FormWidget = require('./FormWidget.js');
 */
 function FormController(view, scope) {
   this.super(view, scope);
+  var controller = this;
+  
   scope.onAttached.then(function() {
     var bindingAttributes = [];
 
