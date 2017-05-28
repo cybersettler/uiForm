@@ -7,6 +7,8 @@ const methodMap = {
   put: "sendPutRequest",
   patch: "sendPatchRequest"
 };
+const backendPattern = /\//;
+const callbackPattern = /^->f[(]/;
 
 function FormWidget(view, scope){
   this.view = view;
@@ -15,6 +17,7 @@ function FormWidget(view, scope){
   this.form = view.shadowRoot.querySelector('form');
   this.displayState = getFormDisplayState(view);
   this.template = Handlebars.compile(view.innerHTML);
+  this.model = {};
   this.schema = {properties:{}};
   this.display = {fields:[]};
   this.onSubmit = getSubmitPromise(this).then(function(result) {
@@ -28,8 +31,17 @@ function FormWidget(view, scope){
     // At this point we receive the data back from
     // the submit handler.
     if (view.hasAttribute('data-action')) {
-      var method = view.dataset.method || 'post';
-      scope[methodMap[method]](result);
+      return postData(view, scope, result);
+    }
+
+    return Promise.resolve(result);
+  }).then(function(result) {
+    if (view.hasAttribute('data-success') && scope.onSuccess) {
+      scope.onSuccess(result);
+    }
+  }).catch(function(err) {
+    if (view.hasAttribute('data-error') && scope.onError) {
+      scope.onError(err);
     }
   });
 }
@@ -136,6 +148,32 @@ function getFormDisplayState(view) {
   }
 
   return 'empty';
+}
+
+function postData(view, scope, data) {
+  var action = view.dataset.action;
+  var getAction;
+  if (callbackPattern.test(action)) {
+     getAction = scope.getAction();
+  } else {
+    getAction = Promise.resolve(action);
+  }
+
+  var method = view.dataset.method || 'post';
+  var getMethod;
+  if (callbackPattern.test(method)) {
+    getMethod = scope.getMethod();
+  } else {
+    getMethod = Promise.resolve(method);
+  }
+
+  getMethod.then(function(result) {
+    method = result;
+    return getAction;
+  }).then(function(result) {
+    action = result;
+    scope[methodMap[method]](action, data);
+  });
 }
 
 module.exports = FormWidget;
