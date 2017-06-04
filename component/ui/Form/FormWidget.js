@@ -20,30 +20,7 @@ function FormWidget(view, scope){
   this.model = {};
   this.schema = {properties:{}};
   this.display = {fields:[]};
-  this.onSubmit = getSubmitPromise(this).then(function(result) {
-    // Before the data is submitted,
-    // the parent view has the oportunity to manipulate the data.
-    if (view.hasAttribute('data-submit')) {
-      return scope.onSubmit(result);
-    }
-    return result;
-  }).then(function(result) {
-    // At this point we receive the data back from
-    // the submit handler.
-    if (view.hasAttribute('data-action')) {
-      return postData(view, scope, result);
-    }
-
-    return Promise.resolve(result);
-  }).then(function(result) {
-    if (view.hasAttribute('data-success') && scope.onSuccess) {
-      scope.onSuccess(result);
-    }
-  }).catch(function(err) {
-    if (view.hasAttribute('data-error') && scope.onError) {
-      scope.onError(err);
-    }
-  });
+  listenToSubmit(this);
 }
 
 FormWidget.prototype.render = function() {
@@ -114,25 +91,54 @@ function isEmptyValue(value) {
   return value === '' || typeof value === "undefined" || value === null;
 }
 
-function getSubmitPromise(formWidget) {
+function listenToSubmit(formWidget) {
+  var view = formWidget.view;
+  var scope = formWidget.scope;
+  formWidget.form.addEventListener('submit', function(e) {
+    handleSubmit(e, formWidget).then(function(result) {
+      // Before the data is submitted,
+      // the parent view has the oportunity to manipulate the data.
+      if (view.hasAttribute('data-submit')) {
+        return scope.onSubmit(result);
+      }
+      return result;
+    }).then(function(result) {
+      // At this point we receive the data back from
+      // the submit handler.
+      if (view.hasAttribute('data-action')) {
+        return postData(view, scope, result);
+      }
+
+      return Promise.resolve(result);
+    }).then(function(result) {
+      if (view.hasAttribute('data-success') && scope.onSuccess) {
+        scope.onSuccess(result);
+      }
+    }).catch(function(err) {
+      if (view.hasAttribute('data-error') && scope.onError) {
+        scope.onError(err);
+      }
+    });
+  });
+}
+
+function handleSubmit(e, formWidget) {
   return new Promise(function(fulfill, reject) {
-      formWidget.form.addEventListener('submit', function(e) {
-        e.preventDefault();
-        var data = formWidget.parseFormData();
+    e.preventDefault();
+    var data = formWidget.parseFormData();
 
-        if (!formWidget.schema) {
-          fulfill(data);
-          return;
-        }
+    if (!formWidget.schema) {
+      fulfill(data);
+      return;
+    }
 
-        formWidget.validationResult = tv4.validateMultiple(data, formWidget.schema);
-        if (formWidget.validationResult.valid) {
-          fulfill(data);
-        } else {
-          formWidget.render(data);
-          reject(new Error('Form data is not valid'));
-        }
-      });
+    formWidget.validationResult = tv4.validateMultiple(data, formWidget.schema);
+    if (formWidget.validationResult.valid) {
+      fulfill(data);
+    } else {
+      formWidget.render(data);
+      reject(new Error('Form data is not valid'));
+    }
   });
 }
 
