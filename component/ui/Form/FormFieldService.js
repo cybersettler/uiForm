@@ -30,15 +30,21 @@ function renderFields(widget) {
       .data(fields)
       .classed('has-error', function(d) {
         if (widget.validationResult) {
-          return typeof widget.validationResult.errors.find(
-              function(error) {
-                var errorKey = getFieldNameFromError(error);
-                return d.name === errorKey;
-              }
-          ) !== 'undefined';
+          return typeof findFormFieldError(d, widget) !== 'undefined';
         }
         return false;
       });
+
+  group.select('.help-block').text(function(d) {
+    if (widget.validationResult) {
+      var error = findFormFieldError(d, widget);
+      if (!error) {
+        return;
+      }
+      return error.message;
+    }
+    return d.description;
+  });
 
   group.select('input, select').attr('value', function(d) {
       return widget.model[d.name];
@@ -472,6 +478,15 @@ function getFieldNameFromError(error) {
         return ErrorFieldNamePattern.exec(error.dataPath)[1];
     }
     return error.params.key;
+}
+
+function findFormFieldError(d, widget) {
+  return widget.validationResult.errors.find(
+      function(error) {
+        var errorKey = getFieldNameFromError(error);
+        return d.name === errorKey;
+      }
+  )
 }
 
 module.exports = {
