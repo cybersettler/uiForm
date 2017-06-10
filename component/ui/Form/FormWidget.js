@@ -173,12 +173,12 @@ function postData(view, scope, data) {
     getMethod = Promise.resolve(method);
   }
 
-  getMethod.then(function(result) {
+  return getMethod.then(function(result) {
     method = result;
     return getAction;
   }).then(function(result) {
     action = result;
-    scope[methodMap[method]](action, data);
+    return scope[methodMap[method]](action, data);
   });
 }
 

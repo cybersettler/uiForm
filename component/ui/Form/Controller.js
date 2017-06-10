@@ -9,7 +9,7 @@ const FormWidget = require('./FormWidget.js');
 function FormController(view, scope) {
   this.super(view, scope);
   var controller = this;
-  
+
   scope.onAttached.then(function() {
     var bindingAttributes = [];
 
@@ -27,6 +27,10 @@ function FormController(view, scope) {
 
     if (view.hasAttribute('data-submit')) {
       bindingAttributes.push('submit');
+    }
+
+    if (view.hasAttribute('data-method')) {
+      bindingAttributes.push('method');
     }
 
     if (view.hasAttribute('data-action')) {
