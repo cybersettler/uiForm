@@ -21,7 +21,7 @@ function renderFields(widget) {
     });
   }
 
-  var style = getFormStyle(widget);
+  var style = getFormStyleClass(widget);
   widget.form.classList.add(styleClassMap[style]);
 
   // Update…
@@ -428,14 +428,14 @@ function appendSubmitControl(selection, widget, style) {
   });
 }
 
-function getFormStyle(widget) {
+function getFormStyleClass(widget) {
   if (widget.view.classList.contains('form-inline') ||
-      (widget.display && widget.display.style === 'inline')) {
+      (widget.display && widget.display.styleClass === 'inline')) {
     return 'inline';
   }
 
   if (widget.view.classList.contains('form-horizontal') ||
-      (widget.display && widget.display.style === 'horizontal')) {
+      (widget.display && widget.display.styleClass === 'horizontal')) {
     return 'horizontal';
   }
 

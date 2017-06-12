@@ -60,10 +60,10 @@ displayed. Here is an example:
 // ...
 this.getDisplay = function() {
     return {
-      style: 'default',
+      styleClass: 'default',
       fields: [
           "firstname",
-          "lastname", 
+          "lastname",
           "birthdate", {
             name: "description",
             inputType: "textarea"
@@ -147,9 +147,8 @@ this.getSchema = function() {
 Definition of how the form fields should be displayed.
 The following display options are available:
 
-* __style__(string): Form style, possible values are "horizontal",
-"inline" and "default". Default value is "default".
-* __Fields__(Array): Array of field names and/or field configuration
+* __styleClass__(enum: default | horizontal | inline): Defines the form style.
+* __fields__(Array): Array of field names and/or field configuration
 objects. The following options are available for configuration objects:
   * __name__(string): Name of the field
   * __inputType__(string): Input control type. Possible values are
