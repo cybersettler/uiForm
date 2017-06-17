@@ -7,7 +7,7 @@ const methodMap = {
   put: "sendPutRequest",
   patch: "sendPatchRequest"
 };
-const backendPattern = /\//;
+
 const callbackPattern = /^->f[(]/;
 
 function FormWidget(view, scope){
