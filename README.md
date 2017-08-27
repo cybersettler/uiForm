@@ -1,6 +1,6 @@
 # UI Form
 
-Form widget to display and process data in _websemble_ applications.
+>Form widget to display and process data in _websemble_ applications.
 
 __Features__:
 * Automatic form generation from schema and configuration files

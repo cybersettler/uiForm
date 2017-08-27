@@ -24,12 +24,15 @@ function FormWidget(view, scope){
 }
 
 FormWidget.prototype.render = function() {
-  return this.fetchData().then(FormFieldService.renderFields);
+  return this.fetchData()
+      .then(FormFieldService.renderFields);
 };
 
 FormWidget.prototype.fetchData = function() {
   var promises = [];
   var widget = this;
+
+  promises.push(widget.scope.onAppReady);
 
   if (this.view.hasAttribute('data-model')) {
     promises.push(
