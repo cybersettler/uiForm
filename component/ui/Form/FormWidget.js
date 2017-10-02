@@ -63,31 +63,42 @@ FormWidget.prototype.fetchData = function() {
   });
 };
 
-FormWidget.prototype.parseFormData = function() {
-  var formData = new FormData(this.form);
-  var result = {};
+FormWidget.prototype.parseFormData = function () {
+    var form = this.form;
+    var formData = new FormData(this.form);
+    var entries = Array.from(formData.entries());
 
-  for (var entry of formData.entries()) {
-    var key = entry[0];
-    var value = entry[1];
+    return entries
+        .reduce(addField, {});
 
-    var isArray = ArrayPattern.test(key);
+    function addField(result, entry) {
+        var key = entry[0];
+        var value = entry[1];
+        var entryType = getEntryType(key);
 
-    if (isArray) {
-      key = ArrayPattern.exec(key)[1];
+        if (entryType === 'Array') {
+            key = ArrayPattern.exec(key)[1];
+            addArrayItem(result, key, value);
+        } else if (entryType === 'number') {
+            result[key] = Number(value);
+        } else if (!isEmptyValue(value)) {
+            result[key] = value;
+        }
+
+        return result;
     }
 
-    if (isArray && result[key]) {
-      result[key].push(value);
-    } else if(isArray) {
-      result[key] = [];
-      result[key].push(value);
-    } else if(!isEmptyValue(value)){
-      result[key] = value;
+    function addArrayItem(result, key, value) {
+        if (!result[key]) {
+            result[key] = [];
+        }
+        result[key].push(value);
     }
-  }
 
-  return result;
+    function getEntryType(key) {
+        var defaultType = form[key].getAttribute('type');
+        return ArrayPattern.test(key) ? 'Array' : defaultType;
+    }
 };
 
 function isEmptyValue(value) {

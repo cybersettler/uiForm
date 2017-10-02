@@ -224,6 +224,8 @@ function appendNonBooleanFields(selection, model, style) {
       return d.placeholder;
     }
     return null;
+  }).attr('type', function(d) {
+      return d.inputType;
   });
 
   selection.append("p").classed('help-block', true)
@@ -295,7 +297,7 @@ function appendDropdownControl(selection, model, style) {
       return model[d.name];
     }
     return null;
-  });
+  }).classed('form-control', true);
   selection.datum().options.forEach(function(item) {
     select.append('option').text(item);
   });
